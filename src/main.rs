@@ -1,3 +1,6 @@
+mod calculator;
+
 fn main() {
-    println!("Hello, world!");
+    let a = calculator::calculate("1 + 2");
+    println!("Hello, world! {}", a);
 }
