@@ -25,6 +25,8 @@ fn tokenize(input: &str) -> Vec<Token> {
             "-" => tokens.push(Token::Operator(Operator::Sub)),
             "*" => tokens.push(Token::Operator(Operator::Mul)),
             "/" => tokens.push(Token::Operator(Operator::Div)),
+            "(" => tokens.push(Token::Operator(Operator::OpenP)),
+            ")" => tokens.push(Token::Operator(Operator::CloseP)),
             _ => {
                 let num_result = s.parse::<f64>();
                 if let Ok(num) = num_result {
@@ -43,15 +45,29 @@ fn infix_to_postfix(infix: &[Token]) -> Vec<Token> {
 
     for tok in infix {
         match tok {
-            Token::Operator(op) => {
-                if let Some(top_op) = op_stack.last() {
-                    if op.lower_precedence(top_op) {
-                        while let Some(pop) = op_stack.pop() {
-                            postfix.push(Token::Operator(pop));
+            Token::Operator(op) => {    
+                // ) 가 오면 짝이되는 (가 올때까지 모두 pop
+                if *op == Operator::CloseP {
+                    while let Some(pop) = op_stack.pop() {
+                        if pop == Operator::OpenP {
+                            break;
                         }
+                        postfix.push(Token::Operator(pop));
                     }
                 }
-                op_stack.push(*op);
+                else if *op == Operator::OpenP {
+                    op_stack.push(*op);
+                }
+                else {
+                    if let Some(top_op) = op_stack.last() {
+                        if op.lower_precedence(top_op) {
+                            while let Some(pop) = op_stack.pop() {
+                                postfix.push(Token::Operator(pop));
+                            }
+                        }
+                    }
+                    op_stack.push(*op);
+                }
             },
             Token::Number(num) => postfix.push(Token::Number(*num)),
         }
@@ -112,6 +128,8 @@ enum Operator {
     Sub,
     Mul,
     Div,
+    OpenP,
+    CloseP,
 }
 
 impl Operator {
@@ -121,10 +139,12 @@ impl Operator {
 
     fn precedence(&self) -> i8 {
         match self {
-            Operator::Add => 0,
-            Operator::Sub => 0,
-            Operator::Mul => 2,
-            Operator::Div => 2,
+            Operator::Add => 2,
+            Operator::Sub => 2,
+            Operator::Mul => 4,
+            Operator::Div => 4,
+            Operator::OpenP => 1,
+            Operator::CloseP => 1,
         }
     }
 
@@ -134,6 +154,8 @@ impl Operator {
             Operator::Sub => "-",
             Operator::Mul => "*",
             Operator::Div => "/",
+            Operator::OpenP => "(",
+            Operator::CloseP => ")",
         }
     }
 
@@ -143,6 +165,7 @@ impl Operator {
             Operator::Sub => left - right,
             Operator::Mul => left * right,
             Operator::Div => left / right,
+            Operator::OpenP | Operator::CloseP => panic!("dont do that"),
         }
     }
 }
@@ -167,6 +190,11 @@ mod tests {
     }
 
     #[test]
+    fn calc_with_parenthesis() {
+        assert_eq!(calculate("( 1 + 2 ) * ( ( 3 - 4 ) - 5 )" ), -18.0);
+    }
+
+    #[test]
     fn tokenize_add() {
         let tokens = tokenize("+");
         assert_eq!(tokens.len(), 1);
@@ -181,16 +209,23 @@ mod tests {
     }
 
     #[test]
-    fn infix_to_prefix_test1() {
+    fn infix_to_postfix_test1() {
         let tokens = tokenize("1 + 2 * 3");
         let postfix = infix_to_postfix(&tokens);
         assert_eq!(tokens_to_string(&postfix), "1 2 3 * +");
     }
 
     #[test]
-    fn infix_to_prefix_test2() {
+    fn infix_to_postfix_test2() {
         let tokens = tokenize("1 + 2 * 3 - 4 / 5");
         let postfix = infix_to_postfix(&tokens);
         assert_eq!(tokens_to_string(&postfix), "1 2 3 * + 4 5 / -");
+    }
+
+    #[test]
+    fn infix_to_postfix_with_parenthesis() {
+        let tokens = tokenize("( 1 + 2 ) * ( ( 3 - 4 ) - 5 )" );
+        let postfix = infix_to_postfix(&tokens);
+        assert_eq!(tokens_to_string(&postfix), "1 2 + 3 4 - 5 - *");
     }
 }
