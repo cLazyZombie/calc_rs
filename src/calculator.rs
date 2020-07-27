@@ -14,27 +14,68 @@ pub fn calculate(input: &str) -> f64 {
 
 // 1 * 2 + 3 * 4 - 5
 // 1 2 * 3 4  * + 5 -
-
-
 fn tokenize(input: &str) -> Vec<Token> {
     let mut tokens = Vec::<Token>::new();
-    let splitted : Vec<&str> = input.split_whitespace().collect();
-    for s in splitted {
-        match s {
-            "+" => tokens.push(Token::Operator(Operator::Add)),
-            "-" => tokens.push(Token::Operator(Operator::Sub)),
-            "*" => tokens.push(Token::Operator(Operator::Mul)),
-            "/" => tokens.push(Token::Operator(Operator::Div)),
-            "(" => tokens.push(Token::Operator(Operator::OpenP)),
-            ")" => tokens.push(Token::Operator(Operator::CloseP)),
+
+    let mut num_str = String::new();
+
+    let numstr_to_tokens = |num_str: &mut String| -> Vec<Token> {
+        let mut tokens = Vec::<Token>::new();
+
+        if num_str.is_empty() == false{
+            if let Ok(num) =  num_str.parse::<f64>() {
+                tokens.push(Token::Number(num));
+            }
+
+            num_str.clear();
+        }
+
+        tokens
+    };
+
+    for c in input.chars() {
+        match c {
+            '+' => {
+                tokens.append(&mut numstr_to_tokens(&mut num_str));
+                tokens.push(Token::Operator(Operator::Add));
+            }
+
+            '-' => {
+                tokens.append(&mut numstr_to_tokens(&mut num_str));
+                tokens.push(Token::Operator(Operator::Sub));
+            }
+
+            '*' => {
+                tokens.append(&mut numstr_to_tokens(&mut num_str));
+                tokens.push(Token::Operator(Operator::Mul));
+            } 
+
+            '/' => {
+                tokens.append(&mut numstr_to_tokens(&mut num_str));
+                tokens.push(Token::Operator(Operator::Div));
+            }
+
+            '(' => {
+                tokens.append(&mut numstr_to_tokens(&mut num_str));
+                tokens.push(Token::Operator(Operator::OpenP));
+            }
+
+            ')' => {
+                tokens.append(&mut numstr_to_tokens(&mut num_str));
+                tokens.push(Token::Operator(Operator::CloseP));
+            } 
+
             _ => {
-                let num_result = s.parse::<f64>();
-                if let Ok(num) = num_result {
-                    tokens.push(Token::Number(num));
+                if c.is_whitespace() {
+                    tokens.append(&mut numstr_to_tokens(&mut num_str));
+                } else if c.is_numeric() {
+                    num_str.push(c);
                 }
             }
         }
     }
+
+    tokens.append(&mut numstr_to_tokens(&mut num_str));
 
     tokens
 }
@@ -206,6 +247,21 @@ mod tests {
         let tokens = tokenize("1 + 2");
         assert_eq!(tokens.len(), 3);
         assert_eq!(tokens, vec![Token::Number(1.0), Token::Operator(Operator::Add), Token::Number(2.0)]);
+    }
+
+    #[test]
+    fn tokenize_without_spaces() {
+        let tokens = tokenize("1*(2+3)");
+        assert_eq!(tokens.len(), 7);
+        assert_eq!(tokens, vec![
+            Token::Number(1.0), 
+            Token::Operator(Operator::Mul),
+            Token::Operator(Operator::OpenP), 
+            Token::Number(2.0), 
+            Token::Operator(Operator::Add),
+            Token::Number(3.0),
+            Token::Operator(Operator::CloseP),
+        ]);
     }
 
     #[test]
